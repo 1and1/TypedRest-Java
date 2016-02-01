@@ -26,4 +26,12 @@ public interface EntityForm<TEntity> extends Component {
      * @param entity the entity the form operates on.
      */
     void setEntity(TEntity entity);
+
+    /**
+     * 
+     * @param <T>
+     * @param propertyType 
+     * @param listener
+     */
+    <T> void setPropertyLinkListener(Class<T> propertyType, PropertyLinkClickListener<T> listener);
 }

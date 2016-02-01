@@ -7,6 +7,9 @@ import static com.vaadin.shared.util.SharedUtil.propertyIdToHumanFriendly;
 import com.vaadin.ui.*;
 import com.vaadin.ui.themes.ValoTheme;
 import java.beans.*;
+import java.lang.reflect.InvocationTargetException;
+import java.util.*;
+import lombok.AllArgsConstructor;
 
 /**
  * An entity form that uses auto-generated fields.
@@ -66,13 +69,62 @@ public class AutoEntityForm<TEntity>
      * @return The newly created component.
      */
     protected Component buildAndBind(PropertyDescriptor property) {
-        if (BeanUtils.getAnnotation(entityType, property, MultiLine.class).isPresent()) {
+        Optional<LinkTemplate> linkTemplate = BeanUtils.getAnnotation(entityType, property, LinkTemplate.class);
+        if (linkTemplate.isPresent()) {
+            return buildLink(property, linkTemplate.get().rel());
+        } else if (BeanUtils.getAnnotation(entityType, property, MultiLine.class).isPresent()) {
             TextArea textArea = new TextArea();
             fieldGroup.bind(textArea, property.getName());
             return textArea;
         } else {
             return fieldGroup.buildAndBind(property.getName());
         }
+    }
+
+    @AllArgsConstructor
+    private class ButtonBindingRequest {
+
+        public final Button button;
+        public final PropertyDescriptor property;
+        public final String templateRel;
+    }
+
+    private final List<ButtonBindingRequest> buttonBindingRequest = new LinkedList<>();
+
+    /**
+     * Builds a link component for a specific property.
+     *
+     * @param property The property to create the field for.
+     * @param templateRel The link relation type of the template used to
+     * discover a concrete URI for the property value.
+     * @return The newly created component.
+     */
+    protected Component buildLink(PropertyDescriptor property, String templateRel) {
+        Button button = new Button();
+        button.setStyleName(ValoTheme.LINK_SMALL);
+        buttonBindingRequest.add(new ButtonBindingRequest(button, property, templateRel));
+        return button;
+    }
+
+    @Override
+    public void setEntity(TEntity entity) {
+        super.setEntity(entity);
+
+        buttonBindingRequest.forEach(x -> {
+            try {
+                Object value = x.property.getReadMethod().invoke(entity);
+                x.button.setCaption(value.toString());
+                x.button.addClickListener(y -> {
+                    PropertyLinkClickListener listener = linkListeners.get(x.property.getPropertyType());
+                    if (listener != null) {
+                        // TODO: Avoid unchecked call or mark as ignored
+                        listener.linkClick(value, x.templateRel);
+                    }
+                });
+            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
     }
 
     /**

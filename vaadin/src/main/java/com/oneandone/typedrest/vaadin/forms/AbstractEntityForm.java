@@ -8,6 +8,8 @@ import com.vaadin.data.util.*;
 import com.vaadin.data.validator.*;
 import com.vaadin.ui.*;
 import java.lang.annotation.Annotation;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Base class for building entity form implementations.
@@ -80,6 +82,13 @@ public abstract class AbstractEntityForm<TEntity>
                 field.addValidator(validator);
             }
         });
+    }
+
+    Map<Class<?>, PropertyLinkClickListener<?>> linkListeners = new HashMap<>();
+
+    @Override
+    public <T> void setPropertyLinkListener(Class<T> propertyType, PropertyLinkClickListener<T> listener) {
+        linkListeners.put(propertyType, listener);
     }
 
     @Override
